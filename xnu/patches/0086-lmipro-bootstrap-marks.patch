@@ -1,0 +1,88 @@
+--- a/osfmk/arm64/machine_routines.c	2026-11-11 14:27:59.793544780 +0800
++++ b/osfmk/arm64/machine_routines.c	2026-11-11 14:27:59.808544079 +0800
+@@ -37,6 +37,7 @@
+ #include <arm/misc_protos.h>
+ #include <arm/machdep_call.h>
+ #include <arm/machine_routines.h>
++#include <arm64/sweet_early.h>
+ #include <arm/rtclock.h>
+ #include <arm/cpuid_internal.h>
+ #include <arm/cpu_capabilities.h>
+@@ -484,6 +485,7 @@
+ 
+ 
+ 	machine_conf();
++	sweet_early_fill(0xffc0c0ffu); /* light violet: machine_conf returned */
+ 
+ 
+ 	/*
+--- a/osfmk/kern/startup.c	2026-11-11 14:27:59.795544687 +0800
++++ b/osfmk/kern/startup.c	2026-11-11 14:27:59.808544079 +0800
+@@ -91,6 +91,7 @@
+ #include <kern/sfi.h>
+ #endif
+ #include <kern/startup.h>
++#include <arm64/sweet_early.h>
+ #include <kern/task.h>
+ #include <kern/thread.h>
+ #include <kern/timer.h>
+@@ -427,11 +428,13 @@
+ 	char            namep[16];
+ 
+ 	printf("%s\n", version); /* log kernel version */
++	sweet_early_fill(0xff00ff40u); /* spring green: kernel_bootstrap entered */
+ 
+ 	scale_setup();
+ 
+ 	kernel_bootstrap_log("vm_mem_bootstrap");
+ 	vm_mem_bootstrap();
++	sweet_early_fill(0xff40ff00u); /* chartreuse: vm_mem_bootstrap returned */
+ 
+ 	machine_info.memory_size = (uint32_t)mem_size;
+ #if XNU_TARGET_OS_OSX
+@@ -448,6 +451,7 @@
+ 	atm_init();
+ #endif
+ 	kernel_startup_initialize_upto(STARTUP_SUB_OSLOG);
++	sweet_early_fill(0xfffff000u); /* yellow-green: STARTUP_SUB_OSLOG done */
+ 
+ #if CONFIG_UBSAN_MINIMAL
+ 	kernel_bootstrap_log("UBSan minimal runtime init");
+@@ -476,12 +480,14 @@
+ 
+ 	kernel_bootstrap_log("console_init");
+ 	console_init();
++	sweet_early_fill(0xff00f0ffu); /* aqua: console_init returned */
+ 
+ 	kernel_bootstrap_log("stackshot_init");
+ 	stackshot_init();
+ 
+ 	kernel_bootstrap_log("sched_init");
+ 	sched_init();
++	sweet_early_fill(0xffff00f0u); /* fuchsia: sched_init returned */
+ 
+ #if CONFIG_MACF
+ 	kernel_bootstrap_log("mac_policy_init");
+@@ -489,6 +495,7 @@
+ #endif
+ 
+ 	kernel_startup_initialize_upto(STARTUP_SUB_MACH_IPC);
++	sweet_early_fill(0xff0000a0u); /* navy: STARTUP_SUB_MACH_IPC done */
+ 
+ 	/*
+ 	 * As soon as the virtual memory system is up, we record
+@@ -502,12 +509,14 @@
+ 
+ 	kernel_bootstrap_log("machine_init");
+ 	machine_init();
++	sweet_early_fill(0xff00a000u); /* dark green: machine_init returned */
+ 
+ 	kernel_bootstrap_log("thread_machine_init_template");
+ 	thread_machine_init_template();
+ 
+ 	kernel_bootstrap_log("clock_init");
+ 	clock_init();
++	sweet_early_fill(0xffa00000u); /* dark red: clock_init returned */
+ 
+ 	/*
+ 	 *	Initialize the IPC, task, and thread subsystems.
