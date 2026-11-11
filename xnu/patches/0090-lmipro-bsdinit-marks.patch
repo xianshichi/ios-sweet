@@ -1,0 +1,81 @@
+--- a/bsd/kern/bsd_init.c	2026-11-11 16:32:05.201760786 +0800
++++ b/bsd/kern/bsd_init.c	2026-11-11 16:32:05.213762539 +0800
+@@ -128,6 +128,7 @@
+ #include <mach/semaphore.h>
+ #include <mach/sync_policy.h>
+ #include <kern/clock.h>
++#include <arm64/sweet_early.h>
+ #include <sys/csr.h>
+ #include <mach/kern_return.h>
+ #include <mach/thread_act.h>            /* for thread_resume() */
+@@ -499,6 +500,7 @@
+ #endif
+ 
+ 	throttle_init();
++	sweet_early_stage(70);
+ 
+ 	printf(copyright);
+ 
+@@ -510,6 +512,7 @@
+ 	/* Initialize kauth subsystem before instancing the first credential */
+ 	bsd_init_kprintf("calling kauth_init\n");
+ 	kauth_init();
++	sweet_early_stage(71);
+ 
+ 	/* kernel_task->proc = kernproc; */
+ 	set_bsdtask_info(kernel_task, (void *)kernproc);
+@@ -680,6 +683,7 @@
+ 	 */
+ 	bsd_init_kprintf("calling bsd_bufferinit\n");
+ 	bsd_bufferinit();
++	sweet_early_stage(72);
+ 
+ 	/*
+ 	 * Initialize the calendar.
+@@ -690,6 +694,7 @@
+ 	/* Initialize the file systems. */
+ 	bsd_init_kprintf("calling vfsinit\n");
+ 	vfsinit();
++	sweet_early_stage(73);
+ 
+ #if CONFIG_PROC_UUID_POLICY
+ 	/* Initial proc_uuid_policy subsystem */
+@@ -787,6 +792,7 @@
+ 
+ 	bsd_init_kprintf("calling bsd_autoconf\n");
+ 	bsd_autoconf();
++	sweet_early_stage(74);
+ 
+ #if CONFIG_DTRACE
+ 	dtrace_postinit();
+@@ -851,6 +857,7 @@
+ 	 */
+ 	bsd_init_kprintf("calling net_init_run\n");
+ 	net_init_run();
++	sweet_early_stage(75);
+ #endif /* NETWORKING */
+ 
+ 	bsd_init_kprintf("calling inittodr\n");
+@@ -868,6 +875,7 @@
+ 
+ 		bsd_init_kprintf("vfs_mountroot\n");
+ 		if (0 == (err = vfs_mountroot())) {
++	sweet_early_stage(76);
+ 			break;
+ 		}
+ 		rootdevice[0] = '\0';
+--- a/osfmk/kern/startup.c	2026-11-11 16:32:05.201760786 +0800
++++ b/osfmk/kern/startup.c	2026-11-11 16:32:05.202760933 +0800
+@@ -808,10 +808,12 @@
+ 	 * at the latest
+ 	 */
+ 	vm_set_restrictions(machine_info.max_cpus);
++	sweet_early_stage(6301);
+ 
+ 
+ #if KPERF
+ 	kperf_init_early();
++	sweet_early_stage(6302);
+ #endif
+ 
+ 	/*
