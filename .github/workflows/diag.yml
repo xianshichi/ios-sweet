@@ -1,15 +1,11 @@
 name: diag
 on: workflow_dispatch
 jobs:
-  m14:
-    runs-on: macos-14
+  v15:
+    runs-on: macos-15
     steps:
-      - run: echo m14
-  m13:
-    runs-on: macos-13
+      - run: uname -m; sw_vers; ls -d /Applications/Xcode*.app
+  v26:
+    runs-on: macos-26
     steps:
-      - run: echo m13
-  ml:
-    runs-on: macos-latest
-    steps:
-      - run: echo ml
+      - run: uname -m; sw_vers; ls -d /Applications/Xcode*.app
