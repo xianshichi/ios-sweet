@@ -1,0 +1,9 @@
+--- a/config/MASTER	2026-11-11 17:27:47.678420975 +0800
++++ b/config/MASTER	2026-11-11 17:27:47.679420929 +0800
+@@ -612,5 +612,5 @@
+ 
+ # kernel performance tracing
+-options     KPERF                  # <kperf>
++# options     KPERF                # <kperf> disabled for lmipro bring-up
+ options     KPC                    # <kpc>
+ 
