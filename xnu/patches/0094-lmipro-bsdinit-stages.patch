@@ -1,0 +1,58 @@
+--- a/bsd/kern/bsd_init.c	2026-11-11 18:10:58.539477284 +0800
++++ b/bsd/kern/bsd_init.c	2026-11-11 18:10:58.552476944 +0800
+@@ -128,6 +128,7 @@
+ #include <mach/semaphore.h>
+ #include <mach/sync_policy.h>
+ #include <kern/clock.h>
++#include <arm64/sweet_early.h>
+ #include <sys/csr.h>
+ #include <mach/kern_return.h>
+ #include <mach/thread_act.h>            /* for thread_resume() */
+@@ -499,6 +500,7 @@
+ #endif
+ 
+ 	throttle_init();
++	sweet_early_stage(70);
+ 
+ 	printf(copyright);
+ 
+@@ -510,6 +512,7 @@
+ 	/* Initialize kauth subsystem before instancing the first credential */
+ 	bsd_init_kprintf("calling kauth_init\n");
+ 	kauth_init();
++	sweet_early_stage(71);
+ 
+ 	/* kernel_task->proc = kernproc; */
+ 	set_bsdtask_info(kernel_task, (void *)kernproc);
+@@ -680,6 +683,7 @@
+ 	 */
+ 	bsd_init_kprintf("calling bsd_bufferinit\n");
+ 	bsd_bufferinit();
++	sweet_early_stage(72);
+ 
+ 	/*
+ 	 * Initialize the calendar.
+@@ -690,6 +694,7 @@
+ 	/* Initialize the file systems. */
+ 	bsd_init_kprintf("calling vfsinit\n");
+ 	vfsinit();
++	sweet_early_stage(73);
+ 
+ #if defined(ARM64_BOARD_CONFIG_SWEET)
+ 	/* AMFI's MAC policy is built in on SWEET (bsd/kern/sweet_amfi.c). */
+@@ -799,6 +804,7 @@
+ 
+ 	bsd_init_kprintf("calling bsd_autoconf\n");
+ 	bsd_autoconf();
++	sweet_early_stage(74);
+ 
+ #if CONFIG_DTRACE
+ 	dtrace_postinit();
+@@ -863,6 +869,7 @@
+ 	 */
+ 	bsd_init_kprintf("calling net_init_run\n");
+ 	net_init_run();
++	sweet_early_stage(75);
+ #endif /* NETWORKING */
+ 
+ 	bsd_init_kprintf("calling inittodr\n");
