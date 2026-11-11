@@ -1,0 +1,35 @@
+--- a/bsd/vfs/vfs_init.c	2026-11-11 18:34:11.204075262 +0800
++++ b/bsd/vfs/vfs_init.c	2026-11-11 18:34:11.216075823 +0800
+@@ -75,6 +75,7 @@
+ 
+ #include <sys/param.h>
+ #include <sys/mount_internal.h>
++#include <arm64/sweet_early.h>
+ #include <sys/time.h>
+ #include <sys/vm.h>
+ #include <sys/vnode_internal.h>
+@@ -314,20 +315,24 @@
+ 	 * Initialize the vnode table
+ 	 */
+ 	vntblinit();
++	sweet_early_stage(7601);
+ 	/*
+ 	 * Initialize the filesystem event mechanism.
+ 	 */
+ 	vfs_event_init();
++	sweet_early_stage(7602);
+ 	/*
+ 	 * Initialize the vnode name cache
+ 	 */
+ 	nchinit();
++	sweet_early_stage(7603);
+ 
+ 	/*
+ 	 * Build vnode operation vectors.
+ 	 */
+ 	vfs_op_init();
+ 	vfs_opv_init();   /* finish the job */
++	sweet_early_stage(7604);
+ 	/*
+ 	 * Initialize each file system type in the static list,
+ 	 * until the first NULL ->vfs_vfsops is encountered.
