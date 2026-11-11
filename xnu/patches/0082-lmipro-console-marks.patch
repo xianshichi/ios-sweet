@@ -1,0 +1,23 @@
+--- a/osfmk/arm/arm_init.c	2026-11-11 10:41:21.106263350 +0800
++++ b/osfmk/arm/arm_init.c	2026-11-11 10:41:21.116263135 +0800
+@@ -581,6 +581,7 @@
+ 		}
+ 		serial_set_on_demand(on_demand);
+ 	}
++	sweet_early_mark(201, "serial boot-args handled");
+ 	if (kern_feature_override(KF_SERIAL_OVRD)) {
+ 		serialmode = 0;
+ 	}
+@@ -591,9 +592,12 @@
+ 		(void)switch_to_serial_console(); /* Switch into serial mode from video console */
+ 		disableConsoleOutput = FALSE;     /* Allow printfs to happen */
+ 	}
++	sweet_early_mark(202, "calling PE_create_console");
+ 	PE_create_console();
++	sweet_early_mark(203, "PE_create_console returned");
+ 
+ 	/* setup console output */
++	sweet_early_mark(204, "calling PE_init_printf");
+ 	PE_init_printf(FALSE);
+ 	sweet_early_mark(21, "PE_init_printf returned");
+ 
