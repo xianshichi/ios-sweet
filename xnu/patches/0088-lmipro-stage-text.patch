@@ -1,0 +1,42 @@
+--- a/osfmk/arm64/sweet_early.c	2026-11-11 15:47:03.120050454 +0800
++++ b/osfmk/arm64/sweet_early.c	2026-11-11 15:47:03.135050075 +0800
+@@ -153,6 +153,39 @@
+ 		}
+ 	}
+ 
++	/* Second channel: plain text at the top-left, in case the big digits are
++	 * not visible on this panel. */
++	early_row = 0;
++	early_col = 0;
++	early_started = 1;
++	sweet_early_string("STAGE ");
++
++	unsigned int ndig2 = 0;
++	unsigned int d2[10];
++	unsigned int v = stage;
++	do {
++		d2[ndig2++] = v % 10u;
++		v /= 10u;
++	} while (v != 0u && ndig2 < 10u);
++	for (unsigned int i = ndig2; i > 0; i--) {
++		sweet_early_putc((char)('0' + d2[i - 1]));
++	}
++	sweet_early_putc('\n');
++
++	/* Third channel: a band whose colour cycles with the stage. */
++	static const uint32_t palette[8] = {
++		0xffff0000u, 0xff00ff00u, 0xff0000ffu, 0xffffff00u,
++		0xffff00ffu, 0xff00ffffu, 0xffff8000u, 0xff8000ffu,
++	};
++	unsigned int band_y0 = EARLY_HEIGHT - 40u;
++	for (unsigned int y = band_y0; y < EARLY_HEIGHT; y++) {
++		volatile uint32_t *line = EARLY_FB + y * EARLY_STRIDE;
++		uint32_t c = palette[stage % 8u];
++		for (unsigned int x = 0; x < EARLY_WIDTH; x++) {
++			line[x] = c;
++		}
++	}
++
+ 	unsigned int cellw = 8u * STAGE_SCALE;
+ 	unsigned int cellh = 16u * STAGE_SCALE;
+ 	unsigned int total = (ndig - start) * cellw;
