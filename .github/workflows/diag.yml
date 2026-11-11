@@ -1,11 +1,15 @@
 name: diag
 on: workflow_dispatch
 jobs:
-  u:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo ubuntu-ok
-  m:
+  m14:
     runs-on: macos-14
     steps:
-      - run: echo macos-ok; sw_vers
+      - run: echo m14
+  m13:
+    runs-on: macos-13
+    steps:
+      - run: echo m13
+  ml:
+    runs-on: macos-latest
+    steps:
+      - run: echo ml
