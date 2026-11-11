@@ -1,0 +1,58 @@
+--- a/osfmk/arm/arm_init.c	2026-11-11 10:22:18.854732838 +0800
++++ b/osfmk/arm/arm_init.c	2026-11-11 10:22:18.864732360 +0800
+@@ -542,7 +542,14 @@
+ 	kernel_startup_initialize_upto(STARTUP_SUB_KPRINTF);
+ 	kprintf("kprintf initialized\n");
+ 	sweet_early_mark(20, "kprintf startup complete");
+-	if (serial_exists) {
++	/*
++	 * lmipro (kona): no UART here, and the fbcon kprintf path is unproven on
++	 * this board, so keep drawing through the early framebuffer console.
++	 * Pass sweetearly=0 to restore the upstream behaviour.
++	 */
++	int sweet_early_keep = 1;
++	PE_parse_boot_argn("sweetearly", &sweet_early_keep, sizeof(sweet_early_keep));
++	if (serial_exists && !sweet_early_keep) {
+ 		sweet_early_disable();
+ 	}
+ 
+@@ -588,6 +595,7 @@
+ 
+ 	/* setup console output */
+ 	PE_init_printf(FALSE);
++	sweet_early_mark(21, "PE_init_printf returned");
+ 
+ #if __arm64__
+ #if DEBUG
+@@ -598,6 +606,7 @@
+ 	cpu_machine_idle_init(TRUE);
+ 
+ 	PE_init_platform(TRUE, &BootCpuData);
++	sweet_early_mark(22, "PE_init_platform returned");
+ 
+ #if __arm64__
+ 	extern bool cpu_config_correct;
+@@ -614,6 +623,7 @@
+ #endif
+ 
+ 	cpu_timebase_init(TRUE);
++	sweet_early_mark(23, "cpu_timebase_init returned");
+ 
+ #if KPERF
+ 	/* kptimer_curcpu_up() must be called after cpu_timebase_init */
+@@ -622,6 +632,7 @@
+ 
+ 	PE_init_cpu();
+ 	fiq_context_init(TRUE);
++	sweet_early_mark(24, "PE_init_cpu returned");
+ 
+ 
+ #if HIBERNATION
+@@ -663,6 +674,7 @@
+ 	 * against string vulnerabilities
+ 	 */
+ 	__stack_chk_guard &= ~(0xFFULL << 8);
++	sweet_early_mark(25, "entering machine_startup");
+ 	machine_startup(args);
+ }
+ 
