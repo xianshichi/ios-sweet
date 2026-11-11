@@ -1,0 +1,17 @@
+--- a/osfmk/kern/startup.c	2026-11-11 17:10:16.036816668 +0800
++++ b/osfmk/kern/startup.c	2026-11-11 17:10:16.047814418 +0800
+@@ -807,11 +807,14 @@
+ 	 * max_cpus must be nailed down by the time PE_lockdown_iokit() finishes,
+ 	 * at the latest
+ 	 */
++	sweet_early_stage(6300);
+ 	vm_set_restrictions(machine_info.max_cpus);
++	sweet_early_stage(6301);
+ 
+ 
+ #if KPERF
+ 	kperf_init_early();
++	sweet_early_stage(6302);
+ #endif
+ 
+ 	/*
