@@ -1,0 +1,11 @@
+--- a/osfmk/kern/startup.c	2026-11-11 17:53:39.651453759 +0800
++++ b/osfmk/kern/startup.c	2026-11-11 17:53:39.664453279 +0800
+@@ -813,7 +813,7 @@
+ 
+ 
+ #if KPERF
+-	kperf_init_early();
++	/* lmipro: kperf_init_early() never returns before bsd_init; skipped for bring-up. */
+ 	sweet_early_stage(6302);
+ #endif
+ 
