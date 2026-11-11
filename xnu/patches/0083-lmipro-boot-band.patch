@@ -1,0 +1,82 @@
+--- a/osfmk/arm64/sweet_early.h	2026-11-11 11:08:18.167037153 +0800
++++ b/osfmk/arm64/sweet_early.h	2026-11-11 11:08:18.192036431 +0800
+@@ -11,6 +11,7 @@
+ void sweet_early_putc(char c);
+ void sweet_early_panic(const char *fmt, va_list *args);
+ void sweet_early_relocate(uint64_t base);
++void sweet_early_band(uint32_t color);
+ void sweet_early_disable(void);
+ #else
+ static inline void sweet_early_mark(unsigned int stage, const char *label)
+@@ -19,6 +20,7 @@
+ 	(void)label;
+ }
+ static inline void sweet_early_disable(void) {}
++static inline void sweet_early_band(uint32_t color) { (void)color; }
+ #endif
+ 
+ #endif
+--- a/osfmk/arm64/sweet_early.c	2026-11-11 11:08:18.166037182 +0800
++++ b/osfmk/arm64/sweet_early.c	2026-11-11 11:08:18.192036431 +0800
+@@ -126,8 +126,28 @@
+ }
+ 
+ void
++sweet_early_band(uint32_t color)
++{
++	for (unsigned int y = EARLY_HEIGHT - 6; y < EARLY_HEIGHT; y++) {
++		volatile uint32_t *line = EARLY_FB + y * EARLY_STRIDE;
++		for (unsigned int x = 0; x < EARLY_WIDTH; x++) {
++			line[x] = color;
++		}
++	}
++	__asm__ volatile("dsb sy" ::: "memory");
++}
++
++void
+ sweet_early_relocate(uint64_t base)
+ {
++	/* Prove liveness of the kernel VA alias: wipe the screen to a dark grey. */
++	for (unsigned int y = 0; y < EARLY_HEIGHT; y++) {
++		volatile uint32_t *line = EARLY_FB + y * EARLY_STRIDE;
++		for (unsigned int x = 0; x < EARLY_WIDTH; x++) {
++			line[x] = 0xff101010u;
++		}
++	}
++	sweet_early_band(0xff8000ffu);
+ 	sweet_early_mark(8, "leaving bootstrap TTBR0");
+ 	early_fb = (volatile uint32_t *)(uintptr_t)base;
+ 	__asm__ volatile("dsb sy" ::: "memory");
+--- a/osfmk/arm/arm_init.c	2026-11-11 11:08:18.164037240 +0800
++++ b/osfmk/arm/arm_init.c	2026-11-11 11:08:18.192036431 +0800
+@@ -542,6 +542,7 @@
+ 	kernel_startup_initialize_upto(STARTUP_SUB_KPRINTF);
+ 	kprintf("kprintf initialized\n");
+ 	sweet_early_mark(20, "kprintf startup complete");
++	sweet_early_band(0xff00ff00u);
+ 	/*
+ 	 * lmipro (kona): no UART here, and the fbcon kprintf path is unproven on
+ 	 * this board, so keep drawing through the early framebuffer console.
+@@ -582,6 +583,7 @@
+ 		serial_set_on_demand(on_demand);
+ 	}
+ 	sweet_early_mark(201, "serial boot-args handled");
++	sweet_early_band(0xffff00ffu);
+ 	if (kern_feature_override(KF_SERIAL_OVRD)) {
+ 		serialmode = 0;
+ 	}
+@@ -593,11 +595,14 @@
+ 		disableConsoleOutput = FALSE;     /* Allow printfs to happen */
+ 	}
+ 	sweet_early_mark(202, "calling PE_create_console");
++	sweet_early_band(0xff00ffffu);
+ 	PE_create_console();
+ 	sweet_early_mark(203, "PE_create_console returned");
++	sweet_early_band(0xffff8000u);
+ 
+ 	/* setup console output */
+ 	sweet_early_mark(204, "calling PE_init_printf");
++	sweet_early_band(0xffff00ffu);
+ 	PE_init_printf(FALSE);
+ 	sweet_early_mark(21, "PE_init_printf returned");
+ 
