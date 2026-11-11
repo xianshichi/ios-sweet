@@ -1,0 +1,381 @@
+--- a/osfmk/arm64/sweet_early.h	2026-11-11 15:19:55.612864176 +0800
++++ b/osfmk/arm64/sweet_early.h	2026-11-11 15:20:10.448195253 +0800
+@@ -13,6 +13,7 @@
+ void sweet_early_relocate(uint64_t base);
+ void sweet_early_band(uint32_t color);
+ void sweet_early_fill(uint32_t color);
++void sweet_early_stage(unsigned int stage);
+ void sweet_early_disable(void);
+ #else
+ static inline void sweet_early_mark(unsigned int stage, const char *label)
+@@ -23,6 +24,7 @@
+ static inline void sweet_early_disable(void) {}
+ static inline void sweet_early_band(uint32_t color) { (void)color; }
+ static inline void sweet_early_fill(uint32_t color) { (void)color; }
++static inline void sweet_early_stage(unsigned int stage) { (void)stage; }
+ #endif
+ 
+ #endif
+--- a/osfmk/arm64/sweet_early.c	2026-11-11 15:19:55.612864176 +0800
++++ b/osfmk/arm64/sweet_early.c	2026-11-11 15:20:10.448195253 +0800
+@@ -125,6 +125,58 @@
+ 	__asm__ volatile("dsb sy" ::: "memory");
+ }
+ 
++#define STAGE_SCALE 12u
++
++void
++sweet_early_stage(unsigned int stage)
++{
++	static const unsigned int pow10[] = { 1000000000u, 100000000u, 10000000u, 1000000u,
++		100000u, 10000u, 1000u, 100u, 10u, 1u };
++	unsigned int digits[10];
++	unsigned int ndig = 0;
++	unsigned int start = 0;
++
++	for (unsigned int i = 0; i < 10; i++) {
++		unsigned int d = (stage / pow10[i]) % 10u;
++		if (d != 0 || ndig != 0 || i == 9) {
++			digits[ndig++] = d;
++		}
++	}
++	while (ndig > 1 && digits[start] == 0) {
++		start++;
++	}
++
++	for (unsigned int y = 0; y < EARLY_HEIGHT; y++) {
++		volatile uint32_t *line = EARLY_FB + y * EARLY_STRIDE;
++		for (unsigned int x = 0; x < EARLY_WIDTH; x++) {
++			line[x] = 0xff000000u;
++		}
++	}
++
++	unsigned int cellw = 8u * STAGE_SCALE;
++	unsigned int cellh = 16u * STAGE_SCALE;
++	unsigned int total = (ndig - start) * cellw;
++	unsigned int ox = (EARLY_WIDTH - total) / 2u;
++	unsigned int oy = (EARLY_HEIGHT - cellh) / 2u;
++
++	for (unsigned int k = start; k < ndig; k++) {
++		const unsigned char *glyph = iso_font + digits[k] * 16;
++		unsigned int gx0 = ox + (k - start) * cellw;
++		for (unsigned int gy = 0; gy < 16; gy++) {
++			for (unsigned int sy = 0; sy < STAGE_SCALE; sy++) {
++				volatile uint32_t *line = EARLY_FB + (oy + gy * STAGE_SCALE + sy) * EARLY_STRIDE + gx0;
++				for (unsigned int gx = 0; gx < 8; gx++) {
++					uint32_t pixel = (glyph[gy] & (1u << gx)) ? 0xffffffffu : 0xff000000u;
++					for (unsigned int sx = 0; sx < STAGE_SCALE; sx++) {
++						line[gx * STAGE_SCALE + sx] = pixel;
++					}
++				}
++			}
++		}
++	}
++	__asm__ volatile("dsb sy" ::: "memory");
++}
++
+ void
+ sweet_early_fill(uint32_t color)
+ {
+--- a/osfmk/arm/arm_init.c	2026-11-11 15:19:55.612864176 +0800
++++ b/osfmk/arm/arm_init.c	2026-11-11 15:20:10.449195275 +0800
+@@ -542,7 +542,7 @@
+ 	kernel_startup_initialize_upto(STARTUP_SUB_KPRINTF);
+ 	kprintf("kprintf initialized\n");
+ 	sweet_early_mark(20, "kprintf startup complete");
+-	sweet_early_fill(0xff00c000u); /* full green: mark 20 reached */
++	sweet_early_stage(10); /* kprintf startup complete */
+ 	/*
+ 	 * lmipro (kona): no UART here, and the fbcon kprintf path is unproven on
+ 	 * this board, so keep drawing through the early framebuffer console.
+@@ -555,7 +555,7 @@
+ 	}
+ 
+ 	serialmode = 0;
+-	sweet_early_fill(0xffff00ffu); /* magenta: before serial boot-arg parse */
++	sweet_early_stage(11); /* before serial boot-arg parse */
+ 	if (PE_parse_boot_argn("serial", &serialmode, sizeof(serialmode))) {
+ 		/* Do we want a serial keyboard and/or console? */
+ 		kprintf("Serial mode specified: %08X\n", serialmode);
+@@ -584,7 +584,7 @@
+ 		serial_set_on_demand(on_demand);
+ 	}
+ 	sweet_early_mark(201, "serial boot-args handled");
+-	sweet_early_fill(0xff00ffffu); /* cyan: serial boot-arg parse done */
++	sweet_early_stage(12); /* serial boot-arg parse done */
+ 	if (kern_feature_override(KF_SERIAL_OVRD)) {
+ 		serialmode = 0;
+ 	}
+@@ -596,17 +596,17 @@
+ 		disableConsoleOutput = FALSE;     /* Allow printfs to happen */
+ 	}
+ 	sweet_early_mark(202, "calling PE_create_console");
+-	sweet_early_fill(0xffff8000u); /* orange: before PE_create_console */
++	sweet_early_stage(13); /* before PE_create_console */
+ 	PE_create_console();
+ 	sweet_early_mark(203, "PE_create_console returned");
+-	sweet_early_fill(0xff8000ffu); /* purple: PE_create_console returned */
++	sweet_early_stage(14); /* PE_create_console returned */
+ 
+ 	/* setup console output */
+ 	sweet_early_mark(204, "calling PE_init_printf");
+-	sweet_early_fill(0xff0000ffu); /* blue: before PE_init_printf */
++	sweet_early_stage(15); /* before PE_init_printf */
+ 	PE_init_printf(FALSE);
+ 	sweet_early_mark(21, "PE_init_printf returned");
+-	sweet_early_fill(0xff80ff00u); /* pale green: PE_init_printf returned */
++	sweet_early_stage(16); /* PE_init_printf returned */
+ 
+ #if __arm64__
+ #if DEBUG
+@@ -618,7 +618,7 @@
+ 
+ 	PE_init_platform(TRUE, &BootCpuData);
+ 	sweet_early_mark(22, "PE_init_platform returned");
+-	sweet_early_fill(0xffff8000u); /* orange: PE_init_platform returned */
++	sweet_early_stage(23); /* PE_init_platform returned */
+ 
+ #if __arm64__
+ 	extern bool cpu_config_correct;
+@@ -636,7 +636,7 @@
+ 
+ 	cpu_timebase_init(TRUE);
+ 	sweet_early_mark(23, "cpu_timebase_init returned");
+-	sweet_early_fill(0xff00ffffu); /* cyan: cpu_timebase_init returned */
++	sweet_early_stage(24); /* cpu_timebase_init returned */
+ 
+ #if KPERF
+ 	/* kptimer_curcpu_up() must be called after cpu_timebase_init */
+@@ -646,7 +646,7 @@
+ 	PE_init_cpu();
+ 	fiq_context_init(TRUE);
+ 	sweet_early_mark(24, "PE_init_cpu returned");
+-	sweet_early_fill(0xff8000ffu); /* purple: PE_init_cpu returned */
++	sweet_early_stage(25); /* PE_init_cpu returned */
+ 
+ 
+ #if HIBERNATION
+@@ -689,7 +689,7 @@
+ 	 */
+ 	__stack_chk_guard &= ~(0xFFULL << 8);
+ 	sweet_early_mark(25, "entering machine_startup");
+-	sweet_early_fill(0xffffffffu); /* white: entering machine_startup */
++	sweet_early_stage(26); /* entering machine_startup */
+ 	machine_startup(args);
+ }
+ 
+--- a/pexpert/arm/pe_identify_machine.c	2026-11-11 15:19:55.613864199 +0800
++++ b/pexpert/arm/pe_identify_machine.c	2026-11-11 15:20:10.449195275 +0800
+@@ -562,9 +562,9 @@
+ uint32_t
+ pe_arm_init_interrupts(void *args)
+ {
+-	sweet_early_fill(0xffffff00u); /* yellow: entering pe_arm_init_interrupts */
++	sweet_early_stage(17); /* entering pe_arm_init_interrupts */
+ 	kprintf("pe_arm_init_interrupts: args: %p\n", args);
+-	sweet_early_fill(0xff008080u); /* teal: kprintf in pe_arm_init_interrupts returned */
++	sweet_early_stage(18); /* kprintf in pe_arm_init_interrupts returned */
+ 
+ 	/* Set up mappings for interrupt controller and possibly timers (if they haven't been set up already) */
+ 	if (args != NULL) {
+@@ -572,7 +572,7 @@
+ 			return 0;
+ 		}
+ 	}
+-	sweet_early_fill(0xff804000u); /* brown: interrupt controller mapped */
++	sweet_early_stage(19); /* interrupt controller mapped */
+ 
+ 	return pe_arm_init_timer(args);
+ }
+--- a/pexpert/arm/pe_init.c	2026-11-11 15:19:55.613864199 +0800
++++ b/pexpert/arm/pe_init.c	2026-11-11 15:20:10.449195275 +0800
+@@ -426,11 +426,11 @@
+ 		SecureDTInit(PE_state.deviceTreeHead, PE_state.deviceTreeSize);
+ 		pe_identify_machine(boot_args_ptr);
+ 	} else {
+-		sweet_early_fill(0xffff00ffu); /* magenta: entering pe_arm_init_interrupts (platform) */
++		sweet_early_stage(20); /* entering pe_arm_init_interrupts (platform) */
+ 		pe_arm_init_interrupts(args);
+-		sweet_early_fill(0xff40c0ffu); /* sky blue: interrupts done, calling pe_arm_init_debug */
++		sweet_early_stage(21); /* interrupts done, calling pe_arm_init_debug */
+ 		pe_arm_init_debug(args);
+-		sweet_early_fill(0xffc040ffu); /* violet: pe_arm_init_debug returned */
++		sweet_early_stage(22); /* pe_arm_init_debug returned */
+ 	}
+ 
+ 	if (!vm_initialized) {
+--- a/osfmk/arm64/machine_routines.c	2026-11-11 15:19:55.613864199 +0800
++++ b/osfmk/arm64/machine_routines.c	2026-11-11 15:20:10.449195275 +0800
+@@ -485,7 +485,7 @@
+ 
+ 
+ 	machine_conf();
+-	sweet_early_fill(0xffc0c0ffu); /* light violet: machine_conf returned */
++	sweet_early_stage(27); /* machine_conf returned */
+ 
+ 
+ 	/*
+--- a/osfmk/kern/startup.c	2026-11-11 15:19:55.613864199 +0800
++++ b/osfmk/kern/startup.c	2026-11-11 15:20:10.450195297 +0800
+@@ -428,13 +428,13 @@
+ 	char            namep[16];
+ 
+ 	printf("%s\n", version); /* log kernel version */
+-	sweet_early_fill(0xff00ff40u); /* spring green: kernel_bootstrap entered */
++	sweet_early_stage(28); /* kernel_bootstrap entered */
+ 
+ 	scale_setup();
+ 
+ 	kernel_bootstrap_log("vm_mem_bootstrap");
+ 	vm_mem_bootstrap();
+-	sweet_early_fill(0xff40ff00u); /* chartreuse: vm_mem_bootstrap returned */
++	sweet_early_stage(29); /* vm_mem_bootstrap returned */
+ 
+ 	machine_info.memory_size = (uint32_t)mem_size;
+ #if XNU_TARGET_OS_OSX
+@@ -451,7 +451,7 @@
+ 	atm_init();
+ #endif
+ 	kernel_startup_initialize_upto(STARTUP_SUB_OSLOG);
+-	sweet_early_fill(0xfffff000u); /* yellow-green: STARTUP_SUB_OSLOG done */
++	sweet_early_stage(30); /* STARTUP_SUB_OSLOG done */
+ 
+ #if CONFIG_UBSAN_MINIMAL
+ 	kernel_bootstrap_log("UBSan minimal runtime init");
+@@ -480,14 +480,14 @@
+ 
+ 	kernel_bootstrap_log("console_init");
+ 	console_init();
+-	sweet_early_fill(0xff00f0ffu); /* aqua: console_init returned */
++	sweet_early_stage(31); /* console_init returned */
+ 
+ 	kernel_bootstrap_log("stackshot_init");
+ 	stackshot_init();
+ 
+ 	kernel_bootstrap_log("sched_init");
+ 	sched_init();
+-	sweet_early_fill(0xffff00f0u); /* fuchsia: sched_init returned */
++	sweet_early_stage(32); /* sched_init returned */
+ 
+ #if CONFIG_MACF
+ 	kernel_bootstrap_log("mac_policy_init");
+@@ -495,7 +495,7 @@
+ #endif
+ 
+ 	kernel_startup_initialize_upto(STARTUP_SUB_MACH_IPC);
+-	sweet_early_fill(0xff0000a0u); /* navy: STARTUP_SUB_MACH_IPC done */
++	sweet_early_stage(33); /* STARTUP_SUB_MACH_IPC done */
+ 
+ 	/*
+ 	 * As soon as the virtual memory system is up, we record
+@@ -509,14 +509,14 @@
+ 
+ 	kernel_bootstrap_log("machine_init");
+ 	machine_init();
+-	sweet_early_fill(0xff00a000u); /* dark green: machine_init returned */
++	sweet_early_stage(34); /* machine_init returned */
+ 
+ 	kernel_bootstrap_log("thread_machine_init_template");
+ 	thread_machine_init_template();
+ 
+ 	kernel_bootstrap_log("clock_init");
+ 	clock_init();
+-	sweet_early_fill(0xffa00000u); /* dark red: clock_init returned */
++	sweet_early_stage(35); /* clock_init returned */
+ 
+ 	/*
+ 	 *	Initialize the IPC, task, and thread subsystems.
+@@ -549,6 +549,7 @@
+ 
+ 	kernel_bootstrap_log("turnstiles_init");
+ 	turnstiles_init();
++	sweet_early_stage(43); /* turnstiles_init returned */
+ 
+ 	kernel_bootstrap_log("mach_init_activity_id");
+ 	mach_init_activity_id();
+@@ -559,6 +560,7 @@
+ 	/* initialize exceptions */
+ 	kernel_bootstrap_log("exception_init");
+ 	exception_init();
++	sweet_early_stage(44); /* exception_init returned */
+ 
+ #if CONFIG_SCHED_SFI
+ 	kernel_bootstrap_log("sfi_init");
+@@ -576,6 +578,8 @@
+ 		panic("kernel_bootstrap: result = %08X", result);
+ 	}
+ 
++	sweet_early_stage(45); /* kernel_thread_create returned */
++
+ 	/* TODO: do a proper thread_start() (without the thread_setrun()) */
+ 	thread->state = TH_RUN;
+ 	thread->last_made_runnable_time = mach_absolute_time();
+@@ -583,6 +587,7 @@
+ 
+ 	thread_deallocate(thread);
+ 
++	sweet_early_stage(46); /* about to load_context */
+ 	kernel_bootstrap_log("load_context - done");
+ 	load_context(thread);
+ 	/*NOTREACHED*/
+@@ -602,6 +607,7 @@
+ kernel_bootstrap_thread(void)
+ {
+ 	processor_t processor = current_processor();
++	sweet_early_stage(47); /* kernel_bootstrap_thread entered */
+ 
+ #if (DEVELOPMENT || DEBUG)
+ 	platform_stall_panic_or_spin(PLATFORM_STALL_XNU_LOCATION_KERNEL_BOOTSTRAP);
+@@ -612,6 +618,7 @@
+ 	 * Create the idle processor thread.
+ 	 */
+ 	idle_thread_create(processor);
++	sweet_early_stage(48); /* idle_thread_create returned */
+ 
+ 	/*
+ 	 * N.B. Do not stick anything else
+@@ -621,12 +628,14 @@
+ 	 */
+ 	kernel_bootstrap_thread_log("sched_startup");
+ 	sched_startup();
++	sweet_early_stage(49); /* sched_startup returned */
+ 
+ 	/*
+ 	 * Thread lifecycle maintenance (teardown, stack allocation)
+ 	 */
+ 	kernel_bootstrap_thread_log("thread_daemon_init");
+ 	thread_daemon_init();
++	sweet_early_stage(50); /* thread_daemon_init returned */
+ 
+ 	/*
+ 	 * Thread callout service.
+@@ -651,11 +660,13 @@
+ 	 */
+ 	kernel_bootstrap_thread_log("clock_service_create");
+ 	clock_service_create();
++	sweet_early_stage(51); /* clock_service_create returned */
+ 
+ 	/*
+ 	 *	Create the device service.
+ 	 */
+ 	device_service_create();
++	sweet_early_stage(52); /* device_service_create returned */
+ 
+ 	phys_carveout_init();
+ 
+@@ -696,6 +707,7 @@
+ #ifdef  IOKIT
+ 	kernel_bootstrap_log("PE_init_iokit");
+ 	PE_init_iokit();
++	sweet_early_stage(53); /* PE_init_iokit returned */
+ #endif
+ 
+ 	assert(ml_get_interrupts_enabled() == FALSE);
+@@ -705,6 +717,7 @@
+ 	 * interrupts or preemption enabled may begin enforcement.
+ 	 */
+ 	kernel_startup_initialize_upto(STARTUP_SUB_EARLY_BOOT);
++	sweet_early_stage(54); /* STARTUP_SUB_EARLY_BOOT done */
+ 
+ #if SCHED_HYGIENE_DEBUG
+ 	// Reset interrupts masked timeout before we enable interrupts
