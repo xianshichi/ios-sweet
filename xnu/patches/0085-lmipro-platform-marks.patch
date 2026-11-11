@@ -1,0 +1,92 @@
+--- a/osfmk/arm/arm_init.c	2026-11-11 14:12:44.625291964 +0800
++++ b/osfmk/arm/arm_init.c	2026-11-11 14:12:44.637291588 +0800
+@@ -606,6 +606,7 @@
+ 	sweet_early_fill(0xff0000ffu); /* blue: before PE_init_printf */
+ 	PE_init_printf(FALSE);
+ 	sweet_early_mark(21, "PE_init_printf returned");
++	sweet_early_fill(0xff80ff00u); /* pale green: PE_init_printf returned */
+ 
+ #if __arm64__
+ #if DEBUG
+@@ -617,6 +618,7 @@
+ 
+ 	PE_init_platform(TRUE, &BootCpuData);
+ 	sweet_early_mark(22, "PE_init_platform returned");
++	sweet_early_fill(0xffff8000u); /* orange: PE_init_platform returned */
+ 
+ #if __arm64__
+ 	extern bool cpu_config_correct;
+@@ -634,6 +636,7 @@
+ 
+ 	cpu_timebase_init(TRUE);
+ 	sweet_early_mark(23, "cpu_timebase_init returned");
++	sweet_early_fill(0xff00ffffu); /* cyan: cpu_timebase_init returned */
+ 
+ #if KPERF
+ 	/* kptimer_curcpu_up() must be called after cpu_timebase_init */
+@@ -643,6 +646,7 @@
+ 	PE_init_cpu();
+ 	fiq_context_init(TRUE);
+ 	sweet_early_mark(24, "PE_init_cpu returned");
++	sweet_early_fill(0xff8000ffu); /* purple: PE_init_cpu returned */
+ 
+ 
+ #if HIBERNATION
+@@ -685,6 +689,7 @@
+ 	 */
+ 	__stack_chk_guard &= ~(0xFFULL << 8);
+ 	sweet_early_mark(25, "entering machine_startup");
++	sweet_early_fill(0xffffffffu); /* white: entering machine_startup */
+ 	machine_startup(args);
+ }
+ 
+--- a/pexpert/arm/pe_identify_machine.c	2026-11-11 14:12:44.626291933 +0800
++++ b/pexpert/arm/pe_identify_machine.c	2026-11-11 14:12:44.637291588 +0800
+@@ -6,6 +6,7 @@
+ #include <pexpert/boot.h>
+ #include <pexpert/protos.h>
+ #include <pexpert/device_tree.h>
++#include <arm64/sweet_early.h>
+ 
+ #include <pexpert/arm64/board_config.h>
+ 
+@@ -561,7 +562,9 @@
+ uint32_t
+ pe_arm_init_interrupts(void *args)
+ {
++	sweet_early_fill(0xffffff00u); /* yellow: entering pe_arm_init_interrupts */
+ 	kprintf("pe_arm_init_interrupts: args: %p\n", args);
++	sweet_early_fill(0xff008080u); /* teal: kprintf in pe_arm_init_interrupts returned */
+ 
+ 	/* Set up mappings for interrupt controller and possibly timers (if they haven't been set up already) */
+ 	if (args != NULL) {
+@@ -569,6 +572,7 @@
+ 			return 0;
+ 		}
+ 	}
++	sweet_early_fill(0xff804000u); /* brown: interrupt controller mapped */
+ 
+ 	return pe_arm_init_timer(args);
+ }
+--- a/pexpert/arm/pe_init.c	2026-11-11 14:12:44.627291901 +0800
++++ b/pexpert/arm/pe_init.c	2026-11-11 14:12:44.638291557 +0800
+@@ -10,6 +10,7 @@
+ #include <pexpert/pexpert.h>
+ #include <pexpert/boot.h>
+ #include <pexpert/device_tree.h>
++#include <arm64/sweet_early.h>
+ #include <pexpert/pe_images.h>
+ #include <kern/sched_prim.h>
+ #include <kern/socd_client.h>
+@@ -425,8 +426,11 @@
+ 		SecureDTInit(PE_state.deviceTreeHead, PE_state.deviceTreeSize);
+ 		pe_identify_machine(boot_args_ptr);
+ 	} else {
++		sweet_early_fill(0xffff00ffu); /* magenta: entering pe_arm_init_interrupts (platform) */
+ 		pe_arm_init_interrupts(args);
++		sweet_early_fill(0xff40c0ffu); /* sky blue: interrupts done, calling pe_arm_init_debug */
+ 		pe_arm_init_debug(args);
++		sweet_early_fill(0xffc040ffu); /* violet: pe_arm_init_debug returned */
+ 	}
+ 
+ 	if (!vm_initialized) {
