@@ -1,0 +1,85 @@
+--- a/osfmk/arm64/sweet_early.h	2026-11-11 13:46:13.528261774 +0800
++++ b/osfmk/arm64/sweet_early.h	2026-11-11 13:46:13.538261061 +0800
+@@ -12,6 +12,7 @@
+ void sweet_early_panic(const char *fmt, va_list *args);
+ void sweet_early_relocate(uint64_t base);
+ void sweet_early_band(uint32_t color);
++void sweet_early_fill(uint32_t color);
+ void sweet_early_disable(void);
+ #else
+ static inline void sweet_early_mark(unsigned int stage, const char *label)
+@@ -21,6 +22,7 @@
+ }
+ static inline void sweet_early_disable(void) {}
+ static inline void sweet_early_band(uint32_t color) { (void)color; }
++static inline void sweet_early_fill(uint32_t color) { (void)color; }
+ #endif
+ 
+ #endif
+--- a/osfmk/arm64/sweet_early.c	2026-11-11 13:46:13.527261845 +0800
++++ b/osfmk/arm64/sweet_early.c	2026-11-11 13:46:13.538261061 +0800
+@@ -126,6 +126,18 @@
+ }
+ 
+ void
++sweet_early_fill(uint32_t color)
++{
++	for (unsigned int y = 0; y < EARLY_HEIGHT; y++) {
++		volatile uint32_t *line = EARLY_FB + y * EARLY_STRIDE;
++		for (unsigned int x = 0; x < EARLY_WIDTH; x++) {
++			line[x] = color;
++		}
++	}
++	__asm__ volatile("dsb sy" ::: "memory");
++}
++
++void
+ sweet_early_band(uint32_t color)
+ {
+ 	for (unsigned int y = EARLY_HEIGHT - 6; y < EARLY_HEIGHT; y++) {
+--- a/osfmk/arm/arm_init.c	2026-11-11 13:46:13.527261845 +0800
++++ b/osfmk/arm/arm_init.c	2026-11-11 13:46:13.538261061 +0800
+@@ -542,7 +542,7 @@
+ 	kernel_startup_initialize_upto(STARTUP_SUB_KPRINTF);
+ 	kprintf("kprintf initialized\n");
+ 	sweet_early_mark(20, "kprintf startup complete");
+-	sweet_early_band(0xff00ff00u);
++	sweet_early_fill(0xff00c000u); /* full green: mark 20 reached */
+ 	/*
+ 	 * lmipro (kona): no UART here, and the fbcon kprintf path is unproven on
+ 	 * this board, so keep drawing through the early framebuffer console.
+@@ -555,6 +555,7 @@
+ 	}
+ 
+ 	serialmode = 0;
++	sweet_early_fill(0xffff00ffu); /* magenta: before serial boot-arg parse */
+ 	if (PE_parse_boot_argn("serial", &serialmode, sizeof(serialmode))) {
+ 		/* Do we want a serial keyboard and/or console? */
+ 		kprintf("Serial mode specified: %08X\n", serialmode);
+@@ -583,7 +584,7 @@
+ 		serial_set_on_demand(on_demand);
+ 	}
+ 	sweet_early_mark(201, "serial boot-args handled");
+-	sweet_early_band(0xffff00ffu);
++	sweet_early_fill(0xff00ffffu); /* cyan: serial boot-arg parse done */
+ 	if (kern_feature_override(KF_SERIAL_OVRD)) {
+ 		serialmode = 0;
+ 	}
+@@ -595,14 +596,14 @@
+ 		disableConsoleOutput = FALSE;     /* Allow printfs to happen */
+ 	}
+ 	sweet_early_mark(202, "calling PE_create_console");
+-	sweet_early_band(0xff00ffffu);
++	sweet_early_fill(0xffff8000u); /* orange: before PE_create_console */
+ 	PE_create_console();
+ 	sweet_early_mark(203, "PE_create_console returned");
+-	sweet_early_band(0xffff8000u);
++	sweet_early_fill(0xff8000ffu); /* purple: PE_create_console returned */
+ 
+ 	/* setup console output */
+ 	sweet_early_mark(204, "calling PE_init_printf");
+-	sweet_early_band(0xffff00ffu);
++	sweet_early_fill(0xff0000ffu); /* blue: before PE_init_printf */
+ 	PE_init_printf(FALSE);
+ 	sweet_early_mark(21, "PE_init_printf returned");
+ 
