@@ -1,5 +1,5 @@
---- a/bsd/vfs/vfs_subr.c	2026-11-11 18:49:51.192385193 +0800
-+++ b/bsd/vfs/vfs_subr.c	2026-11-11 18:49:51.205385165 +0800
+--- a/bsd/vfs/vfs_subr.c	2026-11-12 09:27:30.294550963 +0800
++++ b/bsd/vfs/vfs_subr.c	2026-11-12 09:27:30.296550339 +0800
 @@ -82,6 +82,7 @@
  #include <sys/proc_internal.h>
  #include <sys/kauth.h>
@@ -30,21 +30,3 @@
  }
  
  /* the timeout is in 10 msecs */
---- a/bsd/vfs/vfs_init.c	2026-11-11 18:49:51.192385193 +0800
-+++ b/bsd/vfs/vfs_init.c	2026-11-11 18:49:51.205385165 +0800
-@@ -75,6 +75,7 @@
- 
- #include <sys/param.h>
- #include <sys/mount_internal.h>
-+#include <arm64/sweet_early.h>
- #include <sys/time.h>
- #include <sys/vm.h>
- #include <sys/vnode_internal.h>
-@@ -313,6 +314,7 @@
- 	/*
- 	 * Initialize the vnode table
- 	 */
-+	sweet_early_stage(7600);
- 	vntblinit();
- 	/*
- 	 * Initialize the filesystem event mechanism.
