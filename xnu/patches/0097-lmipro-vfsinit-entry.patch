@@ -1,0 +1,10 @@
+--- a/bsd/vfs/vfs_init.c	2026-11-12 09:27:30.297550027 +0800
++++ b/bsd/vfs/vfs_init.c	2026-11-12 09:27:30.308546599 +0800
+@@ -313,6 +313,7 @@
+ 	/*
+ 	 * Initialize the vnode table
+ 	 */
++	sweet_early_stage(7600);
+ 	vntblinit();
+ 	/*
+ 	 * Initialize the filesystem event mechanism.
