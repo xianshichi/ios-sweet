@@ -19,12 +19,12 @@
  	read_random(&mb_obscure_extfree, sizeof(mb_obscure_extfree));
  	mb_obscure_extref |= 0x3;
 --- a/iokit/bsddev/IOKitBSDInit.cpp	2026-11-13 13:37:04.549018986 +0800
-+++ b/iokit/bsddev/IOKitBSDInit.cpp	2026-11-13 13:37:04.561017718 +0800
++++ b/iokit/bsddev/IOKitBSDInit.cpp	2026-11-13 13:48:23.241561431 +0800
 @@ -31,6 +31,7 @@
  #include <IOKit/IOCatalogue.h>
  #include <IOKit/IODeviceTreeSupport.h>
  #include <IOKit/IOKitKeys.h>
-+extern void sweet_early_stage(unsigned int stage);
++extern "C" void sweet_early_stage(unsigned int stage);
  #include <IOKit/IONVRAM.h>
  #include <IOKit/IOPlatformExpert.h>
  #include <IOKit/IOUserClient.h>
