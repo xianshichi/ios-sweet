@@ -1,0 +1,25 @@
+--- a/bsd/kern/mcache.c	2026-11-13 16:04:01.497309129 +0800
++++ b/bsd/kern/mcache.c	2026-11-13 16:04:01.510309299 +0800
+@@ -183,7 +183,9 @@
+ 
+ 	VERIFY(mca_trn_max >= 2);
+ 
+-	ncpu = ml_wait_max_cpus();
++	uint32_t lmno_cpuwait = 0;
++	PE_parse_boot_argn("lmno_cpuwait", &lmno_cpuwait, sizeof(lmno_cpuwait));
++	ncpu = lmno_cpuwait ? ml_get_cpu_count() : ml_wait_max_cpus();
+ 	(void) mcache_cache_line_size();        /* prime it */
+ 
+ 	mcache_reap_tcall = thread_call_allocate(mcache_reap_timeout, NULL);
+--- a/bsd/kern/bsd_init.c	2026-11-13 16:04:01.498309142 +0800
++++ b/bsd/kern/bsd_init.c	2026-11-13 16:04:10.696426466 +0800
+@@ -713,7 +713,9 @@
+ 
+ #if SOCKETS
+ 	/* Initialize per-CPU cache allocator */
++	sweet_early_stage(7305);
+ 	mcache_init();
++	sweet_early_stage(7306);
+ 
+ 	/* Initialize mbuf's. */
+ 	bsd_init_kprintf("calling mbinit\n");
