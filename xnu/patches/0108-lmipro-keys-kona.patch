@@ -1,0 +1,35 @@
+--- a/bsd/dev/sweet_keys.c	2026-11-13 17:30:13.349426569 +0800
++++ b/bsd/dev/sweet_keys.c	2026-11-13 17:30:13.362426379 +0800
+@@ -103,10 +103,12 @@
+ 		bool gok = keys_read(keys_gpio_apid, KEYS_GPIO_RT, &gpio);
+ 		int now[3] = {!!(pon & 1u), !(gpio & 1u), !!(pon & 2u)};
+ 		if (!pok || !gok) {
+-			if ((errors++ % 250u) == 0) {
++			/* Keep the ring readable: a few lines, then silence. */
++			if (errors < 5 && (errors % 2u) == 0) {
+ 				printf("SWEET KEYS: read error pon-ok=%d gpio-ok=%d arb-status=%#x\n",
+ 				    pok, gok, keys_last_status);
+ 			}
++			errors++;
+ 		} else {
+ 			errors = 0;
+ 		}
+@@ -165,9 +167,16 @@
+ 	/* GPIO configuration belongs to firmware. Diagnose, never repair it here. */
+ 	unsigned dir = subtype >= 0x10u && subtype <= 0x13u ?
+ 	    mode & 3u : (mode >> 4) & 7u;
+-	if (!eok || !mok || !sok || !(en & 0x80u) || (dir != 0 && dir != 2)) {
+-		printf("SWEET KEYS: GPIO2 not confirmed enabled as input; volume-up withheld, PMIC unchanged\n");
++	/* kona (PM8150L) reports mode bit0 = 1 on the volume-up line that ABL
++	 * left configured as an input, so accept 1 here as well and keep the
++	 * value in the log instead of withholding the key. */
++	if (!eok || !mok || !sok || !(en & 0x80u)) {
++		printf("SWEET KEYS: GPIO2 not confirmed enabled; volume-up withheld, PMIC unchanged (mode=%#x en=%#x subtype=%#x)\n",
++		    mode, en, subtype);
+ 		keys_gpio_apid = KEYS_NO_APID;
++	} else {
++		printf("SWEET KEYS: volume-up accepted (mode=%#x dir=%u en=%#x subtype=%#x)\n",
++		    mode, dir, en, subtype);
+ 	}
+ 	if (!pok && !gok) {
+ 		printf("SWEET KEYS: no readable keys; polling retained for recovery\n");
