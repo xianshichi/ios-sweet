@@ -1,0 +1,17 @@
+--- a/osfmk/kern/startup.c	2026-11-13 15:05:23.163231158 +0800
++++ b/osfmk/kern/startup.c	2026-11-13 15:05:29.425838895 +0800
+@@ -729,7 +729,13 @@
+ 	/*
+ 	 * This will start displaying progress to the user, start as early as possible
+ 	 */
+-	initialize_screen(NULL, kPEAcquireScreen);
++	/* lmipro: XNU taking over the panel is what hides the early stage marks.
++	 * lmnoscreen=1 keeps the firmware console buffer ours for bring-up. */
++	uint32_t lmnoscreen = 0;
++	PE_parse_boot_argn("lmnoscreen", &lmnoscreen, sizeof(lmnoscreen));
++	if (!lmnoscreen) {
++		initialize_screen(NULL, kPEAcquireScreen);
++	}
+ 	sweet_early_stage(56);
+ 
+ 	/*
