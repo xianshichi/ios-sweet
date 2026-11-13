@@ -1,0 +1,38 @@
+--- a/bsd/kern/uipc_mbuf.c	2026-11-13 13:37:04.547019197 +0800
++++ b/bsd/kern/uipc_mbuf.c	2026-11-13 13:37:04.561017718 +0800
+@@ -1555,6 +1555,7 @@
+ __private_extern__ void
+ mbinit(void)
+ {
++	sweet_early_stage(7399);
+ 	unsigned int m;
+ 	unsigned int initmcl = 0;
+ 	thread_t thread = THREAD_NULL;
+@@ -1638,7 +1639,9 @@
+ 	/* Initialize random red zone cookie value */
+ 	_CASSERT(sizeof(mb_redzone_cookie) ==
+ 	    sizeof(((struct pkthdr *)0)->redzone));
++	sweet_early_stage(7398);
+ 	read_random(&mb_redzone_cookie, sizeof(mb_redzone_cookie));
++	sweet_early_stage(7397);
+ 	read_random(&mb_obscure_extref, sizeof(mb_obscure_extref));
+ 	read_random(&mb_obscure_extfree, sizeof(mb_obscure_extfree));
+ 	mb_obscure_extref |= 0x3;
+--- a/iokit/bsddev/IOKitBSDInit.cpp	2026-11-13 13:37:04.549018986 +0800
++++ b/iokit/bsddev/IOKitBSDInit.cpp	2026-11-13 13:37:04.561017718 +0800
+@@ -31,6 +31,7 @@
+ #include <IOKit/IOCatalogue.h>
+ #include <IOKit/IODeviceTreeSupport.h>
+ #include <IOKit/IOKitKeys.h>
++extern void sweet_early_stage(unsigned int stage);
+ #include <IOKit/IONVRAM.h>
+ #include <IOKit/IOPlatformExpert.h>
+ #include <IOKit/IOUserClient.h>
+@@ -655,6 +656,7 @@
+ IOFindBSDRoot( char * rootName, unsigned int rootNameSize,
+     dev_t * root, u_int32_t * oflags )
+ {
++	sweet_early_stage(9999);
+ 	mach_timespec_t     t;
+ 	IOService *         service;
+ 	IORegistryEntry *   regEntry;
