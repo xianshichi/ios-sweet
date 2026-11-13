@@ -1,0 +1,110 @@
+--- /dev/null
++++ b/bsd/dev/kona_usb.c	2026-11-13 15:04:25.158897397 +0800
+@@ -0,0 +1,86 @@
++/*
++ * KONA (SM8250 / lmi) USB bring-up, step 1: read-only probe plus one
++ * observable action.
++ *
++ * The board's USB is a Synopsys DWC3 at 0x0a600000 (HS phy at 0x088e3000,
++ * QMP SS phy at 0x088e8000) behind Qualcomm's dwc-usb3-msm wrapper. ABL
++ * leaves it running for fastboot, so the first question is not "can we drive
++ * it" but "did our kernel get this far at all". Toggling DCTL.RunStop makes
++ * the host see a disconnect/reconnect, which is a signal that needs no
++ * working console on the phone.
++ *
++ * Everything here is one register block, no interrupts, no DMA.
++ */
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++#include <sys/param.h>
++#include <sys/systm.h>
++#include <pexpert/pexpert.h>
++#include <pexpert/device_tree.h>
++#include <vm/pmap.h>
++#include <vm/vm_kern.h>
++
++extern vm_offset_t ml_io_map(vm_offset_t, vm_size_t);
++extern void delay(int);
++extern void sweet_early_stage(unsigned int stage);
++
++#define DWC_GSNPSID     0xc120
++#define DWC_DCTL        0xc704
++#define DWC_DSTS        0xc70c
++#define DWC_DCTL_RUN_STOP   (1u << 31)
++#define DWC3_GSNPSID_DWC3   0x5533u
++
++void kona_usb_probe(void);
++
++static inline uint32_t
++kusb_rd(vm_offset_t base, uint32_t off)
++{
++	uint32_t v = *(volatile uint32_t *)(base + off);
++	__asm__ volatile ("dmb oshld" ::: "memory");
++	return v;
++}
++
++static inline void
++kusb_wr(vm_offset_t base, uint32_t off, uint32_t v)
++{
++	*(volatile uint32_t *)(base + off) = v;
++	__asm__ volatile ("dmb oshst" ::: "memory");
++}
++
++void
++kona_usb_probe(void)
++{
++	DTEntry node;
++	uintptr_t const *reg = NULL;
++	unsigned int size = 0;
++	vm_offset_t regs;
++	uint32_t gsnpsid, dctl, dsts;
++
++	sweet_early_stage(9500);
++	if (SecureDTLookupEntry(NULL, "/sweet-usb", &node) != kSuccess ||
++	    SecureDTGetProperty(node, "reg", (void const **)&reg, &size) != kSuccess ||
++	    size < 2 * sizeof(uintptr_t)) {
++		sweet_early_stage(9501);
++		return;
++	}
++
++	regs = ml_io_map(reg[0], reg[1]);
++	gsnpsid = kusb_rd(regs, DWC_GSNPSID);
++	if ((gsnpsid >> 16) != DWC3_GSNPSID_DWC3) {
++		sweet_early_stage(9502);
++		printf("KONA USB: unexpected GSNPSID %08x at %p\n", gsnpsid, (void *)regs);
++		return;
++	}
++	sweet_early_stage(9503);
++
++	dctl = kusb_rd(regs, DWC_DCTL);
++	dsts = kusb_rd(regs, DWC_DSTS);
++	printf("KONA USB: GSNPSID %08x DCTL %08x DSTS %08x\n", gsnpsid, dctl, dsts);
++
++	/* One observable action: stop and restart the device controller. */
++	kusb_wr(regs, DWC_DCTL, dctl & ~DWC_DCTL_RUN_STOP);
++	delay(20);
++	kusb_wr(regs, DWC_DCTL, dctl | DWC_DCTL_RUN_STOP);
++	delay(20);
++	sweet_early_stage(9504);
++}
++#endif /* ARM64_BOARD_CONFIG_SWEET */
+--- a/bsd/conf/files	2026-11-13 15:04:32.814409968 +0800
++++ b/bsd/conf/files	2026-11-13 15:04:32.826409205 +0800
+@@ -105,6 +105,7 @@
+ 
+ bsd/dev/memdev.c			standard
+ bsd/dev/sweet_ufs.c			standard
++bsd/dev/kona_usb.c			standard
+ bsd/dev/sweet_sample.c			standard
+ bsd/dev/sweet_keys.c			standard
+ bsd/dev/sweet_touch.c			standard
+--- a/bsd/kern/bsd_init.c	2026-11-13 15:04:32.815409904 +0800
++++ b/bsd/kern/bsd_init.c	2026-11-13 15:04:32.826409205 +0800
+@@ -476,6 +476,8 @@
+ void
+ bsd_init(void)
+ {
++	extern void kona_usb_probe(void);
++	kona_usb_probe();
+ 	struct uthread *ut;
+ 	vnode_t init_rootvnode = NULLVP;
+ 	struct proc_ro_data kernproc_ro_data = {
