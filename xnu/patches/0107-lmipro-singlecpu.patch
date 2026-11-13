@@ -1,0 +1,17 @@
+--- a/bsd/kern/bsd_init.c	2026-11-13 16:26:02.466816366 +0800
++++ b/bsd/kern/bsd_init.c	2026-11-13 16:26:02.478814901 +0800
+@@ -478,6 +478,14 @@
+ {
+ 	extern void kona_usb_probe(void);
+ 	kona_usb_probe();
++	/* lmipro: the ARM ml_set_max_cpus() callers live in IOKit CPU nubs, which
++	 * never match on kona yet; without this mcache_init() waits forever. */
++	extern void ml_set_max_cpus(unsigned int);
++	uint32_t lmsinglecpu = 1;
++	PE_parse_boot_argn("lmsinglecpu", &lmsinglecpu, sizeof(lmsinglecpu));
++	if (lmsinglecpu) {
++		ml_set_max_cpus(1);
++	}
+ 	struct uthread *ut;
+ 	vnode_t init_rootvnode = NULLVP;
+ 	struct proc_ro_data kernproc_ro_data = {
