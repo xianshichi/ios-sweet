@@ -1,0 +1,20 @@
+--- a/bsd/dev/arm/systemcalls.c	2026-11-16 09:18:26.777740079 +0800
++++ b/bsd/dev/arm/systemcalls.c	2026-11-16 09:18:26.778740046 +0800
+@@ -102,6 +102,17 @@
+ 
+ 	code = arm_get_syscall_number(state);
+ 
++	/* lmipro: trace pid 1 while launchd is stuck after early boot. */
++	if (proc != NULL && proc->p_pid == 1) {
++		static uint32_t p1_trace_count;
++		if (p1_trace_count < 4000) {
++			printf("P1SYS %u\n", (unsigned)code);
++		} else if (p1_trace_count == 4000) {
++			printf("P1SYS trace limit reached\n");
++		}
++		p1_trace_count++;
++	}
++
+ #define unix_syscall_kprintf(x...)      /* kprintf("unix_syscall: " x) */
+ 
+ 	if (kdebug_enable && !code_is_kdebug_trace(code)) {
