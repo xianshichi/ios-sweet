@@ -1,0 +1,23 @@
+--- a/bsd/vfs/vfs_syscalls.c	2026-11-16 11:11:58.840894500 +0800
++++ b/bsd/vfs/vfs_syscalls.c	2026-11-16 11:11:58.841894472 +0800
+@@ -4537,6 +4537,20 @@
+ 
+ 	oflags = uflags;
+ 
++	/* lmipro: record the paths pid 1 opens (safe syscall context here). */
++	if (p != NULL && p->p_pid == 1 && ndp != NULL && ndp->ni_dirp != NULL &&
++	    ndp->ni_segflg == UIO_USERSPACE) {
++		static uint32_t p1_open_count;
++		if (p1_open_count < 400) {
++			char pbuf[160];
++			if (copyinstr((user_addr_t)(uintptr_t)ndp->ni_dirp, pbuf,
++			    sizeof(pbuf), NULL) == 0) {
++				printf("P1OPEN %s\n", pbuf);
++			}
++		}
++		p1_open_count++;
++	}
++
+ 	amode = oflags & O_ACCMODE;
+ 	/*
+ 	 * Because O_RDONLY is 0, it is not possible to distinguish between
