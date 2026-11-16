@@ -1,0 +1,24 @@
+--- a/bsd/dev/arm/systemcalls.c	2026-11-16 10:02:20.072624251 +0800
++++ b/bsd/dev/arm/systemcalls.c	2026-11-16 10:02:20.073624220 +0800
+@@ -135,6 +135,21 @@
+ 		}
+ 	}
+ 
++	/* lmipro: show which paths pid 1 looks up while it sits idle. */
++	if (proc != NULL && proc->p_pid == 1 &&
++	    (code == 5 || code == 463 || code == 338 || code == 340 || code == 344)) {
++		static uint32_t p1_path_count;
++		if (p1_path_count < 400) {
++			char pbuf[160];
++			user_addr_t uaddr = (code == 463 || code == 344) ?
++			    (user_addr_t)state->r[1] : (user_addr_t)state->r[0];
++			if (copyinstr(uaddr, pbuf, sizeof(pbuf), NULL) == 0) {
++				printf("P1PATH %u %s\n", (unsigned)code, pbuf);
++			}
++		}
++		p1_path_count++;
++	}
++
+ 	uthread->uu_flag |= UT_NOTCANCELPT;
+ 	uthread->syscall_code = code;
+ 
