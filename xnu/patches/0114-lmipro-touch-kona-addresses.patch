@@ -1,0 +1,34 @@
+--- a/bsd/dev/sweet_touch.c	2026-11-17 14:45:09.172366015 +0800
++++ b/bsd/dev/sweet_touch.c	2026-11-17 14:46:58.446418369 +0800
+@@ -22,11 +22,11 @@
+ extern void sweet_hid_touch(int finger, int down, int x, int y);
+ void sweet_touch_init(void);
+ 
+-#define TOUCH_SE_PA      0x00a84000u
++#define TOUCH_SE_PA      0x00a94000u   /* kona: QUPv3 wrapper1 SE5 */
+ #define TOUCH_GCC_PA     0x00100000u
+-#define TOUCH_NORTH_PA   0x03900000u /* DT TLMM + NORTH (0x500000) */
+-#define TOUCH_GCC_VOTE   0x5200cu
+-#define TOUCH_RCG       0x18148u    /* wrapper1 LOCAL S1 = global SE7 */
++#define TOUCH_NORTH_PA   0x0f500000u /* kona TLMM SOUTH block */
++#define TOUCH_GCC_VOTE   0x52008u   /* kona: wrapper1 SE5 branch enable */
++#define TOUCH_RCG       0x18600u    /* kona: qupv3_wrap1_s5_clk_src */
+ #define TOUCH_GPIO_CFG(n) ((uint32_t)(n) * 0x1000u)
+ #define TOUCH_GPIO_IO(n)  (TOUCH_GPIO_CFG(n) + 4u)
+ #define TOUCH_MAX        10u
+@@ -137,13 +137,13 @@
+ touch_clocks(void)
+ {
+ 	/* Vote on only wrapper1 and SE7, preserving other clock users. */
+-	uint32_t mask = (0x0fu << 18) | (1u << 23);
++	uint32_t mask = (0x0fu << 18) | (1u << 27);
+ 	touch_wr(st.gcc, TOUCH_GCC_VOTE, touch_rd(st.gcc, TOUCH_GCC_VOTE) | mask);
+ 	uint32_t dfs = touch_rd(st.gcc, TOUCH_RCG + 0x14u);
+ 	uint32_t cfg = touch_rd(st.gcc, TOUCH_RCG + 4u);
+ 	printf("SWEET TOUCH: gcc vote=%#x rcg=%#x cfg=%#x dfs=%#x\n",
+ 	    touch_rd(st.gcc, TOUCH_GCC_VOTE), touch_rd(st.gcc, TOUCH_RCG), cfg, dfs);
+-	if (dfs & 1u) {
++	if (0 && (dfs & 1u)) { /* kona: force the XO/1 path, skip the SM7150 DFS check */
+ 		/* SE CLK_SEL=0 selects DFS performance level 0. Do not alter tables. */
+ 		cfg = touch_rd(st.gcc, TOUCH_RCG + 0x1cu);
+ 		if ((cfg & 0x371fu) != 1u) {
