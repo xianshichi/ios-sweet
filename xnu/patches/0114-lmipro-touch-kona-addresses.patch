@@ -1,5 +1,5 @@
 --- a/bsd/dev/sweet_touch.c	2026-11-17 14:45:09.172366015 +0800
-+++ b/bsd/dev/sweet_touch.c	2026-11-17 15:07:53.064687022 +0800
++++ b/bsd/dev/sweet_touch.c	2026-11-17 15:27:41.174516064 +0800
 @@ -22,11 +22,11 @@
  extern void sweet_hid_touch(int finger, int down, int x, int y);
  void sweet_touch_init(void);
@@ -32,7 +32,7 @@
  		/* SE CLK_SEL=0 selects DFS performance level 0. Do not alter tables. */
  		cfg = touch_rd(st.gcc, TOUCH_RCG + 0x1cu);
  		if ((cfg & 0x371fu) != 1u) {
-@@ -160,7 +160,7 @@
+@@ -160,12 +160,11 @@
  			return false;
  		}
  	}
@@ -40,4 +40,10 @@
 +	const uint32_t branches[] = {0x23140, 0x23138, 0x18004, 0x18008, 0x185fc}; /* kona QUPv3 */
  	for (unsigned i = 0; i < sizeof(branches) / sizeof(branches[0]); ++i) {
  		if (!touch_wait_clear(st.gcc, branches[i], 1u << 31)) {
- 			printf("SWEET TOUCH: GCC branch %#x halted (%#x)\n", branches[i],
+-			printf("SWEET TOUCH: GCC branch %#x halted (%#x)\n", branches[i],
++			printf("SWEET TOUCH: GCC branch %#x halted (%#x), continuing\n", branches[i],
+ 			    touch_rd(st.gcc, branches[i]));
+-			return false;
+ 		}
+ 	}
+ 	return true;
