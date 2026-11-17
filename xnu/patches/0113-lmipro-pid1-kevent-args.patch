@@ -1,0 +1,24 @@
+--- a/bsd/dev/arm/systemcalls.c
++++ b/bsd/dev/arm/systemcalls.c
+@@ -135,6 +135,21 @@
+ 		}
+ 	}
+ 
++	/* lmipro: what does pid 1 wait on? print kevent arguments (no memory access). */
++	if (proc != NULL && proc->p_pid == 1 && callp->sy_narg != 0 &&
++	    (code == 363 || code == 369 || code == 374 || code == 375)) {
++		static uint32_t p1_kev_count;
++		if (p1_kev_count < 800) {
++			printf("P1KEV %u id=%llu nchanges=%llu nevents=%llu flags=%llu\n",
++			    (unsigned)code,
++			    (unsigned long long)uthread->uu_arg[0],
++			    (unsigned long long)uthread->uu_arg[2],
++			    (unsigned long long)uthread->uu_arg[4],
++			    (unsigned long long)uthread->uu_arg[7]);
++		}
++		p1_kev_count++;
++	}
++
+ 	uthread->uu_flag |= UT_NOTCANCELPT;
+ 	uthread->syscall_code = code;
+ 
